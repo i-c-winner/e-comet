@@ -25,6 +25,7 @@ export function StatsGrid() {
             worker.postMessage({data, dates})
         });
         worker.onmessage= (event) => {
+            console.log('upgrade-data.worker', event.data);
             setRowData(event.data);
         };
         return () => worker.terminate();
