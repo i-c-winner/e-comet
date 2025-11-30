@@ -1,7 +1,12 @@
 import { IStatItem } from '../types/stats.types'
 
-self.onmessage = (event: MessageEvent<IStatItem[]>) => {
-    const items = event.data
+self.onmessage = (event:{
+    data: {data: IStatItem[], dates: string[]}
+} ) => {
+    const items = event.data.data
+    const dates= event.data.dates
+    console.log('DATES', dates)
+
 
     items.forEach((item) => {
         const revenue: number[] = []

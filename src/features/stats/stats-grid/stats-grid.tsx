@@ -8,6 +8,7 @@ import { Metrics } from '../stats.const';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import './stats-grid.scss';
 
+const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 export function StatsGrid() {
     const [rowData, setRowData] = useState<IStatItem[] | null>(null);
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
@@ -15,14 +16,13 @@ export function StatsGrid() {
     const metric = searchParams.get('metric') ?? Metrics.cost;
 
     useEffect(() => {
-        const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
         setColumnDefs(statsGridColumnsFactory(metric, dates));
     }, [metric]);
 
     useEffect(() => {
         const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
         STATS_API.getFull().then((data) => {
-            worker.postMessage(data)
+            worker.postMessage({data, dates})
         });
         worker.onmessage= (event) => {
             setRowData(event.data);
