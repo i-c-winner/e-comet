@@ -33,6 +33,7 @@ export function StatsGrid() {
     return (
         <div className='stats-grid ag-theme-balham'>
             <AgGridReact
+                suppressAggFuncInHeader={true}
                 groupHideParentOfSingleChild='leafGroupsOnly'
                 autoGroupColumnDef={{
                     menuTabs: ['columnsMenuTab'],

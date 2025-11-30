@@ -15,6 +15,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
 
     const sumColumn: ColDef<T> = {
         colId: 'sums',
+        aggFunc: 'sum',
         headerName: 'Sum',
         valueGetter: (params: ValueGetterParams<T>) => {
             return params.data?.sums?.[metric as keyof typeof params.data.sums] ?? 0;
@@ -24,6 +25,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         },
     };
     const averageColumn: ColDef<T> = {
+        aggFunc: 'sum',
         colId: 'average',
         headerName: 'Average',
         valueGetter: (params: ValueGetterParams<T>) => {
@@ -36,6 +38,8 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
 
     const datesColumns: ColDef<T>[] = dates.map((date, index) =>{
         return {
+            aggFunc: 'sum',
+            headerValueGetter: () => date,
             headerName: date,
             colId: `${index}`,
             valueGetter: (params: ValueGetterParams<T>) => {
