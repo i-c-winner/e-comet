@@ -20,7 +20,14 @@ export function StatsGrid() {
     }, [metric]);
 
     useEffect(() => {
-        STATS_API.getFull().then((data) => setRowData(data));
+        const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
+        STATS_API.getFull().then((data) => {
+            worker.postMessage(data)
+        });
+        worker.onmessage= (event) => {
+            setRowData(event.data);
+        };
+        return () => worker.terminate();
     }, []);
 
     return (
