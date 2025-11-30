@@ -33,12 +33,22 @@ export function StatsGrid() {
     return (
         <div className='stats-grid ag-theme-balham'>
             <AgGridReact
-                suppressAggFuncInHeader={true}
-                groupHideParentOfSingleChild='leafGroupsOnly'
                 autoGroupColumnDef={{
                     menuTabs: ['columnsMenuTab'],
                     pinned: 'left',
+                    cellRendererParams: {
+                        innerRenderer: (params: any) => {
+                            if (params.node.group) {
+                                return params.value;
+                            }
+                            console.log(params.data, 'PARAMS')
+                            return params.data?.article ?? 'Артикул неизвестен';
+                        },
+                        suppressCount: true,
+                    },
                 }}
+                suppressAggFuncInHeader={true}
+                groupHideParentOfSingleChild='leafGroupsOnly'
                 theme={themeBalham.withParams({
                     backgroundColor: 'var(--bs-body-bg)',
                     foregroundColor: 'var(--bs-body-color)',

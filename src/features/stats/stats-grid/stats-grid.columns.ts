@@ -2,7 +2,7 @@ import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag
 import { IStatItem, ORDERED_LEVELS } from '../../../types/stats.types';
 import { METADATA_LABELS } from '../stats.const';
 
-const NOT_DATA= 'Нет данных'
+const NOT_DATA = 'Нет данных';
 export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dates: string[]) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => ({
         colId: level,
@@ -36,30 +36,31 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         },
     };
 
-    const datesColumns: ColDef<T>[] = dates.map((date, index) =>{
+    const datesColumns: ColDef<T>[] = dates.map((date, index) => {
         return {
             aggFunc: 'sum',
             headerValueGetter: () => date,
             headerName: date,
             colId: `${index}`,
             valueGetter: (params: ValueGetterParams<T>) => {
-                if (params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index]===0) return NOT_DATA;
+                if (params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] === 0) return NOT_DATA;
                 return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? NOT_DATA;
             },
             valueFormatter: (params: ValueFormatterParams<T>) => {
                 return params.value?.toLocaleString() ?? '';
             },
             cellStyle: (params: ValueFormatterParams<T>) => {
-                if ( params.value === NOT_DATA){
+                if (params.value === NOT_DATA) {
                     return {
                         color: 'red',
-                    }
-                } return {
-                    fontWeight: 'bold'
+                    };
                 }
+                return {
+                    fontWeight: 'bold',
+                };
             },
-        }
-    } );
+        };
+    });
 
     return [...metadataColumns, sumColumn, averageColumn, ...datesColumns];
 }
