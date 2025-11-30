@@ -35,21 +35,18 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
     };
 
     const datesColumns: ColDef<T>[] = dates.map((date, index) =>{
-        const d1=new Date(date).setHours(0,0,0,0)
-
         return {
             headerName: date,
             colId: `${index}`,
             valueGetter: (params: ValueGetterParams<T>) => {
-                // const d2=new Date(params.data?.lastUpdate as string).setHours(0,0,0,0)
-                // if (d1>d2) return NOT_DATA;
-                return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? 0;
+                if (params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index]===0) return NOT_DATA;
+                return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? NOT_DATA;
             },
             valueFormatter: (params: ValueFormatterParams<T>) => {
                 return params.value?.toLocaleString() ?? '';
             },
             cellStyle: (params: ValueFormatterParams<T>) => {
-                if ( params.value === 0){
+                if ( params.value === NOT_DATA){
                     return {
                         color: 'red',
                     }

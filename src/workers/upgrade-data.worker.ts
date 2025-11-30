@@ -5,7 +5,6 @@ self.onmessage = (event:{
 } ) => {
     const items = event.data.data
     const dates= event.data.dates
-    console.log('DATES', dates)
 
     let i =0
     while (i < items.length) {
@@ -21,8 +20,8 @@ self.onmessage = (event:{
             let cost=items[i].cost[j]
             let orders=items[i].orders[j]
             let returns=items[i].returns[j]
-            revenue.push(orders-returns)
-            buyouts.push(cost*revenue[j])
+            buyouts.push(orders-returns)
+            revenue.push(cost*buyouts[j])
             if (d1<d2) {
                if (length>1) length -= 1
                 items[i].cost[j]=0
@@ -67,11 +66,11 @@ self.onmessage = (event:{
         }
         const avg = items[i].average;
         const sums = items[i].sums;
-        avg!.revenue = avgRevenue;
-        avg!.buyouts = avgBuyouts;
-        avg!.cost = avgCost;
-        avg!.orders = avgOrders;
-        avg!.returns = avgReturns;
+        avg!.revenue = Math.floor(avgRevenue);
+        avg!.buyouts = Math.floor(avgBuyouts);
+        avg!.cost = Math.floor(avgCost);
+        avg!.orders = Math.floor(avgOrders);
+        avg!.returns = Math.floor(avgReturns);
         sums!.revenue = sumRevenue;
         sums!.buyouts = sumBuyouts;
         sums!.cost = sumCost;
