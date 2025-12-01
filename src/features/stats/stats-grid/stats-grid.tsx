@@ -22,17 +22,35 @@ export function StatsGrid() {
     useEffect(() => {
         const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
         STATS_API.getFull().then((data) => {
-            worker.postMessage({data, dates})
+            worker.postMessage({ data, dates });
         });
-        worker.onmessage= (event) => {
-            setRowData(event.data);
+        worker.onmessage = (event) => {
+            const { types, brands, suppliers, articles } = event.data as {
+                types: IStatItem[];
+                brands: IStatItem[];
+                suppliers: IStatItem[];
+                articles: Record<string, IStatItem[]>;
+            };
+            console.info('Получены данные от worker:', { types, brands, suppliers, articles });
+            const flattenedDataArticles: IStatItem[] = [...Object.values(articles).flat()];
+            const flattenedDataBrand = brands;
+
+            console.log(flattenedDataBrand, 'flattenedDataBrand');
+
+            setRowData(flattenedDataArticles);
         };
+
+        worker.onerror = (error) => {
+            console.error('Ошибка в worker:', error);
+        };
+
         return () => worker.terminate();
     }, []);
 
     return (
         <div className='stats-grid ag-theme-balham'>
             <AgGridReact
+                groupHideParentOfSingleChild='leafGroupsOnly'
                 autoGroupColumnDef={{
                     menuTabs: ['columnsMenuTab'],
                     pinned: 'left',
@@ -41,14 +59,12 @@ export function StatsGrid() {
                             if (params.node.group) {
                                 return params.value;
                             }
-                            console.log(params.data, 'PARAMS')
                             return params.data?.article ?? 'Артикул неизвестен';
                         },
                         suppressCount: true,
                     },
                 }}
                 suppressAggFuncInHeader={true}
-                groupHideParentOfSingleChild='leafGroupsOnly'
                 theme={themeBalham.withParams({
                     backgroundColor: 'var(--bs-body-bg)',
                     foregroundColor: 'var(--bs-body-color)',

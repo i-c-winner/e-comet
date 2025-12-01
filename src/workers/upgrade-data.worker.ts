@@ -1,9 +1,19 @@
 import { IStatItem } from '../types/stats.types';
+import { AdStatsDatabase } from '../dbs/stats.db.ts';
+
+const db = AdStatsDatabase.getInstance('user');
+const addedBrands: string[] = [];
+const addedSuppliers: string[] = [];
+const addedTypes: string[] = [];
 
 self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
     const items = event.data.data;
     const dates = event.data.dates;
     const normalizedDates = items.map((item) => new Date(item.lastUpdate).setHours(0, 0, 0, 0));
+    const articles: Record<string, IStatItem[]> = {};
+    const brands: Partial<IStatItem>[] = [];
+    const suppliers: Partial<IStatItem>[] = [];
+    const types: Partial<IStatItem>[] = [];
 
     let i = 0;
     while (i < items.length) {
@@ -72,8 +82,26 @@ self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
         sums!.cost = sumCost;
         sums!.orders = sumOrders;
         sums!.returns = sumReturns;
+
+        const article = items[i].article as string;
+        if (!articles[article]) {
+            articles[article] = [];
+        }
+        articles[article]?.push(items[i] as IStatItem);
+        if (!addedBrands.includes(items[i].brand)) {
+            addedBrands.push(items[i].brand);
+            brands.push({ brand: items[i].brand, supplier: items[i].supplier, sums, average: avg });
+        }
+        if (!addedSuppliers.includes(items[i].supplier)) {
+            addedSuppliers.push(items[i].supplier);
+            suppliers.push({ supplier: items[i].supplier, sums, average: avg });
+        }
+        if (!addedTypes.includes(items[i].type)) {
+            addedTypes.push(items[i].type);
+            types.push({ supplier: items[i].supplier, brand: items[i].brand, type: items[i].type, sums, average: avg });
+        }
         i++;
     }
-
-    self.postMessage(items);
+    db.updateDB(articles, brands, suppliers, types);
+    self.postMessage({ items, articles, brands, suppliers, types });
 };
