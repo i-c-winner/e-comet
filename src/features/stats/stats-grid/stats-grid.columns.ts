@@ -43,14 +43,13 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
             headerName: date,
             colId: `${index}`,
             valueGetter: (params: ValueGetterParams<T>) => {
-                if (params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] === 0) return NOT_DATA;
                 return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? NOT_DATA;
             },
             valueFormatter: (params: ValueFormatterParams<T>) => {
                 return params.value?.toLocaleString() ?? '';
             },
             cellStyle: (params: ValueFormatterParams<T>) => {
-                if (params.value === NOT_DATA) {
+                if (params.value === 0 || params.value === NOT_DATA) {
                     return {
                         color: 'red',
                     };

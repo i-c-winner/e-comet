@@ -3,23 +3,22 @@ import { IStatItem } from '../types/stats.types';
 self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
     const items = event.data.data;
     const dates = event.data.dates;
+    const normalizedDates = items.map((item) => new Date(item.lastUpdate).setHours(0, 0, 0, 0));
 
     let i = 0;
     while (i < items.length) {
         const revenue: number[] = [];
         const buyouts: number[] = [];
 
-        const d1 = new Date(items[i].lastUpdate).setHours(0, 0, 0, 0);
         let j = 0;
         let length = dates.length;
         while (j < dates.length) {
-            const d2 = new Date(dates[j]).setHours(0, 0, 0, 0);
             let cost = items[i].cost[j];
             let orders = items[i].orders[j];
             let returns = items[i].returns[j];
             buyouts.push(orders - returns);
             revenue.push(cost * buyouts[j]);
-            if (d1 < d2) {
+            if (normalizedDates[i] < new Date(dates[j]).setHours(0, 0, 0, 0)) {
                 if (length > 1) length -= 1;
                 items[i].cost[j] = 0;
                 items[i].orders[j] = 0;
