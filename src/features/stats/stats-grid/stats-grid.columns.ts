@@ -46,6 +46,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
                 return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? NOT_DATA;
             },
             valueFormatter: (params: ValueFormatterParams<T>) => {
+                console.log(params);
                 return params.value?.toLocaleString() ?? '';
             },
             cellStyle: (params: ValueFormatterParams<T>) => {

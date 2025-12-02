@@ -12,22 +12,45 @@ import './stats-grid.scss';
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 export function StatsGrid() {
     const [rowData, setRowData] = useState<IStatItem[] | null>(null);
+    const [path, setPath] = useState<number>(0);
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
+    const [data, setData] = useState<{
+        types: IStatItem[];
+        brands: IStatItem[];
+        suppliers: IStatItem[];
+        articles: IStatItem[];
+    }>({ types: [], brands: [], suppliers: [], articles: [] });
 
     function cellClicked(event: CellClickedEvent) {
-        console.log(event.node.key);
-        console.log(generateLevelPath(event.node));
+        const path = generateLevelPath(event.node);
+        setPath(path.length + 1);
     }
     function groupOpened(event: RowGroupOpenedEvent) {
-        console.log(generateLevelPath(event.node));
+        const path = generateLevelPath(event.node);
+        setPath(path.length);
     }
 
     useEffect(() => {
         setColumnDefs(statsGridColumnsFactory(metric, dates));
     }, [metric]);
 
+    useEffect(() => {
+        switch (length) {
+            case 0 || 1:
+                setRowData(data.suppliers);
+                break;
+            case 2:
+                setRowData(data.brands);
+                break;
+            case 3:
+                setRowData(data.types);
+                break;
+            default:
+                setRowData(data.articles);
+        }
+    }, [path, data]);
     useEffect(() => {
         const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
         STATS_API.getFull().then((data) => {
@@ -40,13 +63,12 @@ export function StatsGrid() {
                 suppliers: IStatItem[];
                 articles: Record<string, IStatItem[]>;
             };
-            console.info('Получены данные от worker:', { types, brands, suppliers, articles });
-            const flattenedDataArticles: IStatItem[] = [...Object.values(articles).flat()];
-            const flattenedDataBrand = brands;
-
-            console.log(flattenedDataBrand, 'flattenedDataBrand');
-
-            setRowData(flattenedDataArticles);
+            setData({
+                types,
+                brands,
+                suppliers,
+                articles: [...Object.values(articles).flat()],
+            });
         };
 
         worker.onerror = (error) => {
