@@ -2,10 +2,11 @@ import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
-import { ColDef, themeBalham } from 'ag-grid-enterprise';
+import { CellClickedEvent, ColDef, RowGroupOpenedEvent, themeBalham } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
 import { statsGridColumnsFactory } from './stats-grid.columns';
+import { generateLevelPath } from '../../../utils/getPath.ts';
 import './stats-grid.scss';
 
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -14,6 +15,14 @@ export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
+
+    function cellClicked(event: CellClickedEvent) {
+        console.log(event.node.key);
+        console.log(generateLevelPath(event.node));
+    }
+    function groupOpened(event: RowGroupOpenedEvent) {
+        console.log(generateLevelPath(event.node));
+    }
 
     useEffect(() => {
         setColumnDefs(statsGridColumnsFactory(metric, dates));
@@ -72,6 +81,8 @@ export function StatsGrid() {
                 })}
                 rowData={rowData}
                 columnDefs={columnDefs}
+                onCellClicked={cellClicked}
+                onRowGroupOpened={groupOpened}
             ></AgGridReact>
         </div>
     );
