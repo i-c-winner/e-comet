@@ -103,5 +103,5 @@ self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
         i++;
     }
     db.updateDB(articles, brands, suppliers, types);
-    self.postMessage({ items, articles, brands, suppliers, types });
+    self.postMessage(articles);
 };

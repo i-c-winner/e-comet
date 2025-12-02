@@ -2,12 +2,27 @@ import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
-import { CellClickedEvent, ColDef, RowGroupOpenedEvent, themeBalham } from 'ag-grid-enterprise';
+import {
+    CellClickedEvent,
+    ColDef,
+    IServerSideDatasource,
+    IServerSideGetRowsRequest,
+    RowGroupOpenedEvent,
+    themeBalham,
+} from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { generateLevelPath } from '../../../utils/getPath.ts';
+import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 import './stats-grid.scss';
+
+interface IPromise {
+    types: IStatItem[];
+    brands: IStatItem[];
+    suppliers: IStatItem[];
+    articles?: IStatItem[];
+}
 
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 export function StatsGrid() {
@@ -32,9 +47,55 @@ export function StatsGrid() {
         setPath(path.length);
     }
 
+    function createServerSideDatasource(server: any): IServerSideDatasource {
+        return {
+            getRows: (params) => {
+                console.log('[Datasource] - rows requested by grid: ', params.request);
+                // get data for request from our fake server
+                const response = server.getData(params.request);
+                // simulating real server call with a 500ms delay
+
+                response.then((res: { success: boolean; rows: IStatItem[] }) => {
+                    if (res.success) {
+                        params.success({ rowData: res.rows });
+                    }
+                });
+            },
+        };
+    }
+    function createFakeServer() {
+        return {
+            getData: (request: IServerSideGetRowsRequest) => {
+                return new Promise<{
+                    success: boolean;
+                    rows: IStatItem[];
+                }>((resolve) => {
+                    const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
+                    STATS_API.getFull().then((data) => {
+                        worker.postMessage({ data, dates });
+                    });
+
+                    worker.onmessage = (event) => {
+                        const articles = event.data as Record<string, IStatItem[]>;
+
+                        const data = Object.values(articles).flat();
+                        const requestedRows = data?.slice(request.startRow, request.endRow);
+                        resolve({
+                            success: true,
+                            rows: requestedRows,
+                        });
+                    };
+
+                    worker.onerror = (error) => {
+                        console.error('Ошибка в worker:', error);
+                    };
+                });
+            },
+        };
+    }
     useEffect(() => {
         setColumnDefs(statsGridColumnsFactory(metric, dates));
-    }, [metric]);
+    }, []);
 
     useEffect(() => {
         switch (length) {
@@ -51,36 +112,15 @@ export function StatsGrid() {
                 setRowData(data.articles);
         }
     }, [path, data]);
-    useEffect(() => {
-        const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
-        STATS_API.getFull().then((data) => {
-            worker.postMessage({ data, dates });
-        });
-        worker.onmessage = (event) => {
-            const { types, brands, suppliers, articles } = event.data as {
-                types: IStatItem[];
-                brands: IStatItem[];
-                suppliers: IStatItem[];
-                articles: Record<string, IStatItem[]>;
-            };
-            setData({
-                types,
-                brands,
-                suppliers,
-                articles: [...Object.values(articles).flat()],
-            });
-        };
-
-        worker.onerror = (error) => {
-            console.error('Ошибка в worker:', error);
-        };
-
-        return () => worker.terminate();
-    }, []);
+    useEffect(() => {}, []);
 
     return (
         <div className='stats-grid ag-theme-balham'>
             <AgGridReact
+                modules={[ServerSideRowModelModule]}
+                rowModelType='serverSide'
+                cacheBlockSize={100}
+                maxBlocksInCache={10}
                 groupHideParentOfSingleChild='leafGroupsOnly'
                 autoGroupColumnDef={{
                     menuTabs: ['columnsMenuTab'],
@@ -101,7 +141,11 @@ export function StatsGrid() {
                     foregroundColor: 'var(--bs-body-color)',
                     browserColorScheme: 'light',
                 })}
-                rowData={rowData}
+                onGridReady={(params) => {
+                    const fakeServer = createFakeServer();
+                    const datasource = createServerSideDatasource(fakeServer);
+                    params.api.setGridOption('serverSideDatasource', datasource);
+                }}
                 columnDefs={columnDefs}
                 onCellClicked={cellClicked}
                 onRowGroupOpened={groupOpened}
