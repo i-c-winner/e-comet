@@ -9,6 +9,9 @@ import { statsGridColumnsFactory } from './stats-grid.columns';
 import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 import { AdStatsDatabase } from '../../../dbs/stats.db.ts';
 import './stats-grid.scss';
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 const db = AdStatsDatabase.getInstance('user');
 const lastUpdateStorage = localStorage.getItem('lastUpdate');
@@ -34,6 +37,7 @@ export function StatsGrid() {
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
     const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
+    const { t } = useTranslation();
 
     // ------------ SERVER ------------
 
@@ -230,6 +234,15 @@ export function StatsGrid() {
 
     return (
         <div className='stats-grid ag-theme-balham'>
+            <div>
+                <button className='btn btn-primary m-1' onClick={() => i18n.changeLanguage('ru')}>
+                    ru
+                </button>
+                <button className='btn btn-primary m-1' onClick={() => i18n.changeLanguage('en')}>
+                    en
+                </button>
+            </div>
+
             {started && (
                 <AgGridReact<IStatItem>
                     modules={[ServerSideRowModelModule]}
@@ -260,7 +273,7 @@ export function StatsGrid() {
                     columnDefs={columnDefs}
                 />
             )}
-            {!started && <span>...Loading</span>}
+            {!started && <span>{t('Loading')}</span>}
         </div>
     );
 }
