@@ -33,23 +33,13 @@ export class AdStatsDatabase extends Dexie {
         return AdStatsDatabase.instance;
     }
 
-    private async saveGroup(
-        data: Record<string, Partial<IStatItem>[]> | Partial<IStatItem>[],
-        table: Table<Partial<IStatItem> & { id?: number }, number>,
-    ): Promise<void> {
+    private async saveGroup(data: Partial<IStatItem>[], table: Table<Partial<IStatItem> & { id?: number }, number>): Promise<void> {
         table.clear();
-        if (Array.isArray(data)) {
-            await table.bulkPut(data);
-            return;
-        }
-        const flatList = Object.values(data).flat();
-        if (flatList.length) {
-            await table.bulkPut(flatList);
-        }
+        await table.bulkPut(data);
     }
 
     public async updateDB(
-        articles: Record<string, IStatItem[]>,
+        articles: IStatItem[],
         brands: Partial<IStatItem>[],
         suppliers: Partial<IStatItem>[],
         types: Partial<IStatItem>[],

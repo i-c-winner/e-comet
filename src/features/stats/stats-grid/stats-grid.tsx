@@ -21,6 +21,13 @@ import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 import './stats-grid.scss';
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
+const lastUpdateStorage = localStorage.getItem('lastUpdate');
+const lastUpdate = lastUpdateStorage ? Number(lastUpdateStorage) : undefined;
+const DAY = 24 * 60 * 60 * 1000;
+const isFresh = () => {
+    if (lastUpdate === undefined || Number.isNaN(lastUpdate)) return true;
+    return Date.now() - lastUpdate > DAY;
+};
 export function StatsGrid() {
     // ----------------------- HOOKS --------------------
 
@@ -42,7 +49,6 @@ export function StatsGrid() {
 
     function cellClicked(event: CellClickedEvent) {
         const path = generateLevelPath(event.node);
-        console.log('Clicked level:', path.length, path);
     }
 
     function groupOpened(event: RowGroupOpenedEvent) {
@@ -62,10 +68,6 @@ export function StatsGrid() {
                     success: boolean;
                     rows: any[];
                 }>((resolve) => {
-                    STATS_API.getFull().then((data) => {
-                        worker.postMessage({ data, dates });
-                    });
-
                     let rows: any[] = [];
 
                     if (level === 0) {
@@ -108,7 +110,15 @@ export function StatsGrid() {
                         rows = currentDate.articles.filter((a: any) => a.supplier === supplier && a.brand === brand && a.type === type);
                     }
 
-                    const page = rows.slice(request.startRow, request.endRow);
+                    // Считаем общее количество строк для этого уровня
+                    const totalRows = rows.length;
+
+                    // Берем только нужную страницу
+                    const startRow = request.startRow || 0;
+                    const endRow = request.endRow || totalRows;
+
+                    const page = rows.slice(startRow, endRow);
+                    console.log('Page:', page, startRow, endRow);
 
                     resolve({
                         success: true,
@@ -122,8 +132,6 @@ export function StatsGrid() {
     function createServerSideDatasource(server: ReturnType<typeof createFakeServer>): IServerSideDatasource {
         return {
             getRows: (params) => {
-                console.log('[Datasource request]', params.request);
-
                 server.getData(params.request).then((res) => {
                     if (res.success) {
                         params.success({
@@ -170,8 +178,8 @@ export function StatsGrid() {
         worker.onmessage = (event) => {
             const { suppliers, brands, types, articles } = event.data;
             setCurrentDate({ suppliers, brands, types, articles });
-            console.log('Worker response:', suppliers.length, brands.length, types.length, articles.length);
             setStarted(true);
+            localStorage.setItem('lastUpdate', Date.now().toString());
         };
 
         worker.onerror = (error) => {

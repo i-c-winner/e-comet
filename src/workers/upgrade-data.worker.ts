@@ -1,5 +1,7 @@
 import { IStatItem } from '../types/stats.types.ts';
+import { AdStatsDatabase } from '../dbs/stats.db.ts';
 
+const db = AdStatsDatabase.getInstance('user');
 self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
     const items = event.data.data;
     const dates = event.data.dates;
@@ -109,6 +111,7 @@ self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
         return { supplier, brand, type, ...data };
     });
     const articles = items;
+    db.updateDB(articles, brands, suppliers, types);
 
     self.postMessage({ articles, brands, suppliers, types });
 };
