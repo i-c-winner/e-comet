@@ -3,19 +3,11 @@ import { useEffect, useState } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
 
-import {
-    CellClickedEvent,
-    ColDef,
-    IServerSideDatasource,
-    IServerSideGetRowsRequest,
-    RowGroupOpenedEvent,
-    themeBalham,
-} from 'ag-grid-enterprise';
+import { ColDef, IServerSideDatasource, IServerSideGetRowsRequest, themeBalham } from 'ag-grid-enterprise';
 
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
 import { statsGridColumnsFactory } from './stats-grid.columns';
-import { generateLevelPath } from '../../../utils/getPath.ts';
 import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 
 import './stats-grid.scss';
@@ -46,15 +38,6 @@ export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
-
-    function cellClicked(event: CellClickedEvent) {
-        const path = generateLevelPath(event.node);
-    }
-
-    function groupOpened(event: RowGroupOpenedEvent) {
-        const path = generateLevelPath(event.node);
-        console.log('Group opened level:', path.length, path);
-    }
     const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
 
     // ------------ SERVER ------------
@@ -110,15 +93,12 @@ export function StatsGrid() {
                         rows = currentDate.articles.filter((a: any) => a.supplier === supplier && a.brand === brand && a.type === type);
                     }
 
-                    // Считаем общее количество строк для этого уровня
                     const totalRows = rows.length;
 
                     // Берем только нужную страницу
                     const startRow = request.startRow || 0;
                     const endRow = request.endRow || totalRows;
-
                     const page = rows.slice(startRow, endRow);
-                    console.log('Page:', page, startRow, endRow);
 
                     resolve({
                         success: true,
@@ -172,6 +152,17 @@ export function StatsGrid() {
     }, [metric]);
 
     useEffect(() => {
+        /**
+         *  if (!isFresh()) {;
+         * Тут еще должна быть логика на проверку наличия в indexedDB
+         * если есть - то использовать данные оттуда, а если нет то использовать
+         * код ниже
+         * Однако там получается болшая проблема -  с улавливанием версий для проверки
+         * - большой объем работы - если успею то доделаю
+         * Потому условно считаем что базы данных нет и в любом случае получаем данные
+         * с сервера
+         * }
+         */
         STATS_API.getFull().then((data) => {
             worker.postMessage({ data, dates });
         });
@@ -219,8 +210,6 @@ export function StatsGrid() {
                         params.api.setGridOption('serverSideDatasource', datasource);
                     }}
                     columnDefs={columnDefs}
-                    onCellClicked={cellClicked}
-                    onRowGroupOpened={groupOpened}
                 />
             )}
         </div>

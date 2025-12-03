@@ -10,7 +10,7 @@ export class AdStatsDatabase extends Dexie {
     type!: Table<Partial<IStatItem> & { id?: number }, number>;
 
     private constructor(user_uuid: string) {
-        super(`AdStatsDatabase_${user_uuid}`);
+        super(user_uuid);
 
         this.version(1).stores({
             article: '++id, [supplier+brand+type+article]',
