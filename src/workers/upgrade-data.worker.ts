@@ -1,114 +1,114 @@
-import { IStatItem } from '../types/stats.types';
-import { AdStatsDatabase } from '../dbs/stats.db.ts';
-
-const db = AdStatsDatabase.getInstance('user');
-const addedBrands: {
-    brand: string;
-    supplier: string;
-}[] = [];
-const addedSuppliers: string[] = [];
-const addedTypes: string[] = [];
+import { IStatItem } from '../types/stats.types.ts';
 
 self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
     const items = event.data.data;
     const dates = event.data.dates;
-    const normalizedDates = items.map((item) => new Date(item.lastUpdate).setHours(0, 0, 0, 0));
-    const articles: Record<string, IStatItem[]> = {};
-    const brands: Partial<IStatItem>[] = [];
-    const suppliers: Partial<IStatItem>[] = [];
-    const types: Partial<IStatItem>[] = [];
 
-    let i = 0;
-    while (i < items.length) {
+    const normalizedDates = items.map((item) => new Date(item.lastUpdate).setHours(0, 0, 0, 0));
+    const normalizedTargetDates = dates.map((date) => new Date(date).setHours(0, 0, 0, 0));
+
+    const brandsMap = new Map<string, { sums: any; average: any }>();
+    const suppliersMap = new Map<string, { sums: any; average: any }>();
+    const typesMap = new Map<string, { sums: any; average: any }>();
+
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
         const revenue: number[] = [];
         const buyouts: number[] = [];
 
-        let j = 0;
-        let length = dates.length;
-        while (j < dates.length) {
-            let cost = items[i].cost[j];
-            let orders = items[i].orders[j];
-            let returns = items[i].returns[j];
-            buyouts.push(orders - returns);
-            revenue.push(cost * buyouts[j]);
-            if (normalizedDates[i] < new Date(dates[j]).setHours(0, 0, 0, 0)) {
-                if (length > 1) length -= 1;
-                items[i].cost[j] = 0;
-                items[i].orders[j] = 0;
-                items[i].returns[j] = 0;
+        const costArray = item.cost;
+        const ordersArray = item.orders;
+        const returnsArray = item.returns;
+        const itemDate = normalizedDates[i];
+
+        let validLength = dates.length;
+
+        for (let j = 0; j < dates.length; j++) {
+            const buyout = ordersArray[j] - returnsArray[j];
+            const rev = costArray[j] * buyout;
+
+            buyouts.push(buyout);
+            revenue.push(rev);
+            if (itemDate < normalizedTargetDates[j]) {
+                if (validLength > 1) validLength--;
+                costArray[j] = 0;
+                ordersArray[j] = 0;
+                returnsArray[j] = 0;
                 revenue[j] = 0;
                 buyouts[j] = 0;
             }
-            j++;
         }
 
-        const sumRevenue = revenue.reduce((acc, cur) => acc + cur, 0);
-        const avgRevenue = sumRevenue / length;
-        const sumBuyouts = buyouts.reduce((acc, cur) => acc + cur, 0);
-        const avgBuyouts = sumBuyouts / length;
-        const sumCost = items[i].cost.reduce((acc, cur) => acc + cur, 0);
-        const avgCost = sumCost / length;
-        const sumOrders = items[i].orders.reduce((acc, cur) => acc + cur, 0);
-        const avgOrders = sumOrders / length;
-        const sumReturns = items[i].returns.reduce((acc, cur) => acc + cur, 0);
-        const avgReturns = sumReturns / length;
+        let sumRevenue = 0,
+            sumBuyouts = 0,
+            sumCost = 0,
+            sumOrders = 0,
+            sumReturns = 0;
 
-        items[i].revenue = revenue;
-        items[i].buyouts = buyouts;
-        if (!items[i].average) {
-            items[i].average = {
-                revenue: 0,
-                buyouts: 0,
-                cost: 0,
-                orders: 0,
-                returns: 0,
-            };
+        for (let j = 0; j < revenue.length; j++) {
+            sumRevenue += revenue[j];
+            sumBuyouts += buyouts[j];
+            sumCost += costArray[j];
+            sumOrders += ordersArray[j];
+            sumReturns += returnsArray[j];
         }
-        if (!items[i].sums) {
-            items[i].sums = {
-                revenue: 0,
-                buyouts: 0,
-                cost: 0,
-                orders: 0,
-                returns: 0,
-            };
-        }
-        const avg = items[i].average;
-        const sums = items[i].sums;
-        avg!.revenue = Math.floor(avgRevenue);
-        avg!.buyouts = Math.floor(avgBuyouts);
-        avg!.cost = Math.floor(avgCost);
-        avg!.orders = Math.floor(avgOrders);
-        avg!.returns = Math.floor(avgReturns);
-        sums!.revenue = sumRevenue;
-        sums!.buyouts = sumBuyouts;
-        sums!.cost = sumCost;
-        sums!.orders = sumOrders;
-        sums!.returns = sumReturns;
 
-        const article = items[i].article as string;
-        if (!articles[article]) {
-            articles[article] = [];
+        const avgRevenue = sumRevenue / validLength;
+        const avgBuyouts = sumBuyouts / validLength;
+        const avgCost = sumCost / validLength;
+        const avgOrders = sumOrders / validLength;
+        const avgReturns = sumReturns / validLength;
+
+        item.revenue = revenue;
+        item.buyouts = buyouts;
+
+        if (!item.average) item.average = { revenue: 0, buyouts: 0, cost: 0, orders: 0, returns: 0 };
+        if (!item.sums) item.sums = { revenue: 0, buyouts: 0, cost: 0, orders: 0, returns: 0 };
+
+        const avg = item.average;
+        const sums = item.sums;
+
+        avg.revenue = Math.floor(avgRevenue);
+        avg.buyouts = Math.floor(avgBuyouts);
+        avg.cost = Math.floor(avgCost);
+        avg.orders = Math.floor(avgOrders);
+        avg.returns = Math.floor(avgReturns);
+
+        sums.revenue = sumRevenue;
+        sums.buyouts = sumBuyouts;
+        sums.cost = sumCost;
+        sums.orders = sumOrders;
+        sums.returns = sumReturns;
+
+        const brandKey = `${item.brand}|${item.supplier}`;
+        if (!brandsMap.has(brandKey)) {
+            brandsMap.set(brandKey, { sums, average: avg });
         }
-        articles[article]?.push(items[i] as IStatItem);
-        const exists = addedBrands.some((item) => item.brand === items[i].brand && item.supplier === items[i].supplier);
-        if (!exists) {
-            addedBrands.push({
-                brand: items[i].brand,
-                supplier: items[i].supplier,
-            });
-            brands.push({ brand: items[i].brand, supplier: items[i].supplier, sums, average: avg });
+
+        if (!suppliersMap.has(item.supplier)) {
+            suppliersMap.set(item.supplier, { sums, average: avg });
         }
-        if (!addedSuppliers.includes(items[i].supplier)) {
-            addedSuppliers.push(items[i].supplier);
-            suppliers.push({ supplier: items[i].supplier, sums, average: avg });
+
+        const typeKey = `${item.supplier}|${item.brand}|${item.type}`;
+        if (!typesMap.has(typeKey)) {
+            typesMap.set(typeKey, { sums, average: avg });
         }
-        if (!addedTypes.includes(items[i].type)) {
-            addedTypes.push(items[i].type);
-            types.push({ supplier: items[i].supplier, brand: items[i].brand, type: items[i].type, sums, average: avg });
-        }
-        i++;
     }
-    db.updateDB(articles, brands, suppliers, types);
+    const brands = Array.from(brandsMap.entries()).map(([key, data]) => {
+        const [brand, supplier] = key.split('|');
+        return { brand, supplier, ...data };
+    });
+
+    const suppliers = Array.from(suppliersMap.entries()).map(([supplier, data]) => ({
+        supplier,
+        ...data,
+    }));
+
+    const types = Array.from(typesMap.entries()).map(([key, data]) => {
+        const [supplier, brand, type] = key.split('|');
+        return { supplier, brand, type, ...data };
+    });
+    const articles = items;
+
     self.postMessage({ articles, brands, suppliers, types });
 };

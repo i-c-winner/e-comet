@@ -19,10 +19,11 @@ import { generateLevelPath } from '../../../utils/getPath.ts';
 import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 
 import './stats-grid.scss';
-
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
 export function StatsGrid() {
+    // ----------------------- HOOKS --------------------
+
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
@@ -59,7 +60,6 @@ export function StatsGrid() {
 
                         let rows: any[] = [];
 
-                        // 🟢 1 УРОВЕНЬ: Поставщики
                         if (level === 0) {
                             rows = suppliers.map((s: any) => ({
                                 supplier: s.supplier,
@@ -67,7 +67,6 @@ export function StatsGrid() {
                             }));
                         }
 
-                        // 🟡 2 УРОВЕНЬ: Бренды
                         if (level === 1) {
                             const supplier = request.groupKeys[0];
 
@@ -80,7 +79,6 @@ export function StatsGrid() {
                                 }));
                         }
 
-                        // 🔵 3 УРОВЕНЬ: Типы
                         if (level === 2) {
                             const supplier = request.groupKeys[0];
                             const brand = request.groupKeys[1];
@@ -95,12 +93,10 @@ export function StatsGrid() {
                                 }));
                         }
 
-                        // 🟣 4 УРОВЕНЬ: Артикулы
                         if (level === 3) {
                             const supplier = request.groupKeys[0];
                             const brand = request.groupKeys[1];
                             const type = request.groupKeys[2];
-
                             rows = articles.filter((a: any) => a.supplier === supplier && a.brand === brand && a.type === type);
                         }
 
@@ -143,10 +139,6 @@ export function StatsGrid() {
     useEffect(() => {
         const cols = statsGridColumnsFactory(metric, dates);
 
-        /*
-          ВАЖНО: группы показываются так,
-          но сами колонки скрыты
-        */
         const grouping: ColDef[] = [
             {
                 field: 'supplier',

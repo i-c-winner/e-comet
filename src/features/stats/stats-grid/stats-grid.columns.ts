@@ -1,8 +1,8 @@
-import { ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
+import { CellStyle, ColDef, ColDefField, ValueFormatterParams, ValueGetterParams } from 'ag-grid-enterprise';
 import { IStatItem, ORDERED_LEVELS } from '../../../types/stats.types';
 import { METADATA_LABELS } from '../stats.const';
 
-const NOT_DATA = 'Нет данных';
+const NOT_DATA = '-';
 export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dates: string[]) {
     const metadataColumns: ColDef<T>[] = ORDERED_LEVELS.map((level, index) => ({
         colId: level,
@@ -17,22 +17,48 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         colId: 'sums',
         aggFunc: 'sum',
         headerName: 'Sum',
+
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.sums?.[metric as keyof typeof params.data.sums] ?? 0;
+            return params.data?.average?.[metric as keyof typeof params.data.average] ?? NOT_DATA;
         },
+
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? '';
+            return params.value?.toLocaleString?.() ?? '';
+        },
+
+        cellStyle: (params): CellStyle => {
+            if (params.value === 0 || params.value === NOT_DATA) {
+                return {
+                    color: 'red',
+                };
+            }
+            return {
+                fontWeight: 'bold',
+            };
         },
     };
     const averageColumn: ColDef<T> = {
         aggFunc: 'sum',
         colId: 'average',
         headerName: 'Average',
+
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.average?.[metric as keyof typeof params.data.average] ?? 0;
+            return params.data?.average?.[metric as keyof typeof params.data.average] ?? NOT_DATA;
         },
+
         valueFormatter: (params: ValueFormatterParams<T>) => {
-            return params.value?.toLocaleString() ?? '';
+            return params.value?.toLocaleString?.() ?? '';
+        },
+
+        cellStyle: (params): CellStyle => {
+            if (params.value === 0 || params.value === NOT_DATA) {
+                return {
+                    color: 'red',
+                };
+            }
+            return {
+                fontWeight: 'bold',
+            };
         },
     };
 
@@ -46,16 +72,17 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
                 return params.data?.[metric as 'cost' | 'orders' | 'returns' | 'revenue' | 'buyouts']?.[index] ?? NOT_DATA;
             },
             valueFormatter: (params: ValueFormatterParams<T>) => {
-                console.log(params);
                 return params.value?.toLocaleString() ?? '';
             },
-            cellStyle: (params: ValueFormatterParams<T>) => {
+            cellStyle: (params): CellStyle => {
                 if (params.value === 0 || params.value === NOT_DATA) {
                     return {
                         color: 'red',
+                        fontWeight: 'normal',
                     };
                 }
                 return {
+                    color: 'inherit', // или 'black'
                     fontWeight: 'bold',
                 };
             },
