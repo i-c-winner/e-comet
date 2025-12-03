@@ -2,24 +2,19 @@ import { AgGridReact } from 'ag-grid-react';
 import { useEffect, useState } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
-
 import { ColDef, IServerSideDatasource, IServerSideGetRowsRequest, themeBalham } from 'ag-grid-enterprise';
-
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
 import { statsGridColumnsFactory } from './stats-grid.columns';
 import { ServerSideRowModelModule } from 'ag-grid-enterprise';
-
+import { AdStatsDatabase } from '../../../dbs/stats.db.ts';
 import './stats-grid.scss';
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-
+const db = AdStatsDatabase.getInstance('user');
 const lastUpdateStorage = localStorage.getItem('lastUpdate');
 const lastUpdate = lastUpdateStorage ? Number(lastUpdateStorage) : undefined;
 const DAY = 24 * 60 * 60 * 1000;
-const isFresh = () => {
-    if (lastUpdate === undefined || Number.isNaN(lastUpdate)) return true;
-    return Date.now() - lastUpdate > DAY;
-};
+
 export function StatsGrid() {
     // ----------------------- HOOKS --------------------
 
@@ -125,6 +120,67 @@ export function StatsGrid() {
         };
     }
 
+    // ------------ LOGIC --------------
+
+    const isFresh = () => {
+        if (lastUpdate === undefined || Number.isNaN(lastUpdate)) return true;
+        return Date.now() - lastUpdate > DAY;
+    };
+
+    const getData = async () => {
+        const [articles, brands, suppliers, types] = await Promise.all([
+            db.article.toArray(),
+            db.brand.toArray(),
+            db.supplier.toArray(),
+            db.type.toArray(),
+        ]);
+
+        return {
+            articles,
+            brands,
+            suppliers,
+            types,
+        };
+    };
+    function getDataFromServer(data: {
+        articles: (Partial<IStatItem> & {
+            id?: number;
+        })[];
+        brands: (Partial<IStatItem> & {
+            id?: number;
+        })[];
+        suppliers: (Partial<IStatItem> & {
+            id?: number;
+        })[];
+        types: (Partial<IStatItem> & {
+            id?: number;
+        })[];
+    }) {
+        if (data.suppliers.length === 0 || !isFresh()) {
+            STATS_API.getFull().then((data) => {
+                worker.postMessage({ data, dates });
+            });
+            worker.onmessage = (event) => {
+                const { suppliers, brands, types, articles } = event.data;
+                setCurrentDate({ suppliers, brands, types, articles });
+                setStarted(true);
+                localStorage.setItem('lastUpdate', Date.now().toString());
+            };
+
+            worker.onerror = (error) => {
+                console.error('Worker error:', error);
+            };
+        } else {
+            setCurrentDate({
+                articles: data.articles as IStatItem[],
+                brands: data.brands as IStatItem[],
+                types: data.types as IStatItem[],
+                suppliers: data.suppliers as IStatItem[],
+            });
+            setStarted(true);
+        }
+    }
+
     // ------------ EFFECTS ------------
 
     useEffect(() => {
@@ -153,29 +209,21 @@ export function StatsGrid() {
 
     useEffect(() => {
         /**
-         *  if (!isFresh()) {;
-         * Тут еще должна быть логика на проверку наличия в indexedDB
-         * если есть - то использовать данные оттуда, а если нет то использовать
-         * код ниже
-         * Однако там получается болшая проблема -  с улавливанием версий для проверки
-         * - большой объем работы - если успею то доделаю
-         * Потому условно считаем что базы данных нет и в любом случае получаем данные
-         * с сервера
-         * }
+         * логика обращения к базе данных-
+         * Пытаемся получить данные через функцию getData.
+         * получаем данные из indexDB дазы данных.
+         * если получаем пустой массив (данных в базе данных нет) или срок
+         * после последнего обновления больше 24 часов мы обращаемся на сервер за данными.
+         * если меньше 24 часов и есть данные на локальной базе
+         * то мы получаем их из локальной базы.
+         * И в том и другом случае сохраняем их в State компонента
+         * и работаем уже с ним.
          */
-        STATS_API.getFull().then((data) => {
-            worker.postMessage({ data, dates });
-        });
-        worker.onmessage = (event) => {
-            const { suppliers, brands, types, articles } = event.data;
-            setCurrentDate({ suppliers, brands, types, articles });
-            setStarted(true);
-            localStorage.setItem('lastUpdate', Date.now().toString());
-        };
-
-        worker.onerror = (error) => {
-            console.error('Worker error:', error);
-        };
+        getData()
+            .then((data) => {
+                getDataFromServer(data);
+            })
+            .catch((err) => console.error(err));
     }, []);
 
     // ------------ RENDER ------------
