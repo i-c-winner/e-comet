@@ -34,8 +34,8 @@ export class AdStatsDatabase extends Dexie {
     }
 
     private async saveGroup(data: Partial<IStatItem>[], table: Table<Partial<IStatItem> & { id?: number }, number>): Promise<void> {
-        table.clear();
-        await table.bulkPut(data);
+        await table.clear();
+        await table.bulkAdd(data);
     }
 
     public async updateDB(
