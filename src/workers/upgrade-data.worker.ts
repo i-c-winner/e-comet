@@ -2,7 +2,10 @@ import { IStatItem } from '../types/stats.types';
 import { AdStatsDatabase } from '../dbs/stats.db.ts';
 
 const db = AdStatsDatabase.getInstance('user');
-const addedBrands: string[] = [];
+const addedBrands: {
+    brand: string;
+    supplier: string;
+}[] = [];
 const addedSuppliers: string[] = [];
 const addedTypes: string[] = [];
 
@@ -88,8 +91,12 @@ self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
             articles[article] = [];
         }
         articles[article]?.push(items[i] as IStatItem);
-        if (!addedBrands.includes(items[i].brand)) {
-            addedBrands.push(items[i].brand);
+        const exists = addedBrands.some((item) => item.brand === items[i].brand && item.supplier === items[i].supplier);
+        if (!exists) {
+            addedBrands.push({
+                brand: items[i].brand,
+                supplier: items[i].supplier,
+            });
             brands.push({ brand: items[i].brand, supplier: items[i].supplier, sums, average: avg });
         }
         if (!addedSuppliers.includes(items[i].supplier)) {
@@ -103,5 +110,5 @@ self.onmessage = (event: { data: { data: IStatItem[]; dates: string[] } }) => {
         i++;
     }
     db.updateDB(articles, brands, suppliers, types);
-    self.postMessage(articles);
+    self.postMessage({ articles, brands, suppliers, types });
 };
