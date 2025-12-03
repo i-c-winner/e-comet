@@ -1,5 +1,5 @@
 import { AgGridReact } from 'ag-grid-react';
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { IStatItem } from '../../../types/stats.types';
 import { STATS_API } from '../../../api/stats.api';
 
@@ -19,7 +19,6 @@ import { generateLevelPath } from '../../../utils/getPath.ts';
 import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 
 import './stats-grid.scss';
-import { types } from 'sass';
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 
 export function StatsGrid() {
@@ -36,6 +35,7 @@ export function StatsGrid() {
         suppliers: [],
         types: [],
     });
+    const [started, setStarted] = useState<boolean>(false);
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
@@ -170,6 +170,8 @@ export function StatsGrid() {
         worker.onmessage = (event) => {
             const { suppliers, brands, types, articles } = event.data;
             setCurrentDate({ suppliers, brands, types, articles });
+            console.log('Worker response:', suppliers.length, brands.length, types.length, articles.length);
+            setStarted(true);
         };
 
         worker.onerror = (error) => {
@@ -181,36 +183,38 @@ export function StatsGrid() {
 
     return (
         <div className='stats-grid ag-theme-balham'>
-            <AgGridReact<IStatItem>
-                modules={[ServerSideRowModelModule]}
-                rowModelType='serverSide'
-                cacheBlockSize={50}
-                maxBlocksInCache={5}
-                isServerSideGroup={(data) => !!data?.__isGroup}
-                getServerSideGroupKey={(data: any) => data.supplier ?? data.brand ?? data.type}
-                autoGroupColumnDef={{
-                    headerName: 'Группа',
-                    pinned: 'left',
-                    cellRendererParams: {
-                        suppressCount: true,
-                    },
-                }}
-                suppressAggFuncInHeader={true}
-                theme={themeBalham.withParams({
-                    backgroundColor: 'var(--bs-body-bg)',
-                    foregroundColor: 'var(--bs-body-color)',
-                    browserColorScheme: 'light',
-                })}
-                onGridReady={(params) => {
-                    const fakeServer = createFakeServer();
-                    const datasource = createServerSideDatasource(fakeServer);
+            {started && (
+                <AgGridReact<IStatItem>
+                    modules={[ServerSideRowModelModule]}
+                    rowModelType='serverSide'
+                    cacheBlockSize={50}
+                    maxBlocksInCache={5}
+                    isServerSideGroup={(data) => !!data?.__isGroup}
+                    getServerSideGroupKey={(data: any) => data.supplier ?? data.brand ?? data.type}
+                    autoGroupColumnDef={{
+                        headerName: 'Группа',
+                        pinned: 'left',
+                        cellRendererParams: {
+                            suppressCount: true,
+                        },
+                    }}
+                    suppressAggFuncInHeader={true}
+                    theme={themeBalham.withParams({
+                        backgroundColor: 'var(--bs-body-bg)',
+                        foregroundColor: 'var(--bs-body-color)',
+                        browserColorScheme: 'light',
+                    })}
+                    onGridReady={(params) => {
+                        const fakeServer = createFakeServer();
+                        const datasource = createServerSideDatasource(fakeServer);
 
-                    params.api.setGridOption('serverSideDatasource', datasource);
-                }}
-                columnDefs={columnDefs}
-                onCellClicked={cellClicked}
-                onRowGroupOpened={groupOpened}
-            />
+                        params.api.setGridOption('serverSideDatasource', datasource);
+                    }}
+                    columnDefs={columnDefs}
+                    onCellClicked={cellClicked}
+                    onRowGroupOpened={groupOpened}
+                />
+            )}
         </div>
     );
 }
