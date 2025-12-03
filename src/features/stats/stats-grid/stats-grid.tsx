@@ -260,6 +260,7 @@ export function StatsGrid() {
                     columnDefs={columnDefs}
                 />
             )}
+            {!started && <span>...Loading</span>}
         </div>
     );
 }
