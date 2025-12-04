@@ -19,7 +19,7 @@ export function statsGridColumnsFactory<T extends IStatItem>(metric: string, dat
         headerName: 'Sum',
 
         valueGetter: (params: ValueGetterParams<T>) => {
-            return params.data?.average?.[metric as keyof typeof params.data.average] ?? NOT_DATA;
+            return params.data?.sums?.[metric as keyof typeof params.data.average] ?? NOT_DATA;
         },
 
         valueFormatter: (params: ValueFormatterParams<T>) => {

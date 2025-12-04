@@ -1,7 +1,6 @@
 import { AgGridReact } from 'ag-grid-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IStatItem } from '../../../types/stats.types';
-import { STATS_API } from '../../../api/stats.api';
 import { ColDef, IServerSideDatasource, IServerSideGetRowsRequest, themeBalham } from 'ag-grid-enterprise';
 import { useSearchParams } from 'react-router-dom';
 import { Metrics } from '../stats.const';
@@ -20,6 +19,7 @@ const DAY = 24 * 60 * 60 * 1000;
 export function StatsGrid() {
     // ----------------------- HOOKS --------------------
 
+    const refWorker = useRef<Worker>(new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' }));
     const [currentDate, setCurrentDate] = useState<{
         articles: IStatItem[];
         brands: IStatItem[];
@@ -35,12 +35,55 @@ export function StatsGrid() {
     const [columnDefs, setColumnDefs] = useState<ColDef<IStatItem>[]>([]);
     const [searchParams] = useSearchParams();
     const metric = searchParams.get('metric') ?? Metrics.cost;
-    const worker = new Worker(new URL('../../../workers/upgrade-data.worker.ts', import.meta.url), { type: 'module' });
     const { t } = useTranslation();
 
     // ------------ SERVER ------------
 
     function createFakeServer() {
+        const groupByLevel = (items: IStatItem[], groupKeys: string[], level: number) => {
+            let filtered = [...items];
+
+            if (groupKeys.length >= 1) {
+                filtered = filtered.filter((item) => item.supplier === groupKeys[0]);
+            }
+            if (groupKeys.length >= 2) {
+                filtered = filtered.filter((item) => item.brand === groupKeys[1]);
+            }
+            if (groupKeys.length >= 3) {
+                filtered = filtered.filter((item) => item.type === groupKeys[2]);
+            }
+
+            if (level === 0) {
+                const suppliers = [...new Set(filtered.map((item) => item.supplier))];
+                return suppliers.map((supplier) => ({
+                    supplier,
+                    __isGroup: true,
+                    __level: 0,
+                }));
+            } else if (level === 1) {
+                const brands = [...new Set(filtered.map((item) => item.brand))];
+                return brands.map((brand) => ({
+                    supplier: groupKeys[0],
+                    brand,
+                    __isGroup: true,
+                    __level: 1,
+                }));
+            } else if (level === 2) {
+                const types = [...new Set(filtered.map((item) => item.type))];
+                return types.map((type) => ({
+                    supplier: groupKeys[0],
+                    brand: groupKeys[1],
+                    type,
+                    __isGroup: true,
+                    __level: 2,
+                }));
+            } else if (level === 3) {
+                return filtered;
+            }
+
+            return [];
+        };
+
         return {
             getData: (request: IServerSideGetRowsRequest) => {
                 const level = request.groupKeys.length;
@@ -49,61 +92,24 @@ export function StatsGrid() {
                     success: boolean;
                     rows: IStatItem[];
                 }>((resolve) => {
-                    let rows: IStatItem[] = [];
+                    // Определяем, какие данные использовать на основе уровня
+                    let sourceData: IStatItem[] = [];
 
                     if (level === 0) {
-                        rows = currentDate.suppliers.map(
-                            (s: IStatItem): Partial<IStatItem> => ({
-                                supplier: s.supplier,
-                                __isGroup: true,
-                            }),
-                        ) as IStatItem[];
+                        sourceData = currentDate.suppliers;
+                    } else if (level === 1) {
+                        sourceData = currentDate.brands;
+                    } else if (level === 2) {
+                        sourceData = currentDate.types;
+                    } else if (level === 3) {
+                        sourceData = currentDate.articles;
                     }
 
-                    if (level === 1) {
-                        const supplier = request.groupKeys[0];
+                    const rows = groupByLevel(sourceData, request.groupKeys, level) as IStatItem[];
 
-                        rows = currentDate.brands
-                            .filter((b: IStatItem) => b.supplier === supplier)
-                            .map(
-                                (b: IStatItem): Partial<IStatItem> => ({
-                                    brand: b.brand,
-                                    supplier,
-                                    __isGroup: true,
-                                }),
-                            ) as IStatItem[];
-                    }
-
-                    if (level === 2) {
-                        const supplier = request.groupKeys[0];
-                        const brand = request.groupKeys[1];
-
-                        rows = currentDate.types
-                            .filter((t: IStatItem) => t.supplier === supplier && t.brand === brand)
-                            .map(
-                                (t: IStatItem): Partial<IStatItem> => ({
-                                    type: t.type,
-                                    supplier,
-                                    brand,
-                                    __isGroup: true,
-                                }),
-                            ) as IStatItem[];
-                    }
-
-                    if (level === 3) {
-                        const supplier = request.groupKeys[0];
-                        const brand = request.groupKeys[1];
-                        const type = request.groupKeys[2];
-                        rows = currentDate.articles.filter(
-                            (a: IStatItem) => a.supplier === supplier && a.brand === brand && a.type === type,
-                        );
-                    }
-
-                    const totalRows = rows.length;
-
-                    // Берем только нужную страницу
+                    // Пагинация
                     const startRow = request.startRow || 0;
-                    const endRow = request.endRow || totalRows;
+                    const endRow = request.endRow || rows.length;
                     const page = rows.slice(startRow, endRow);
 
                     resolve({
@@ -134,8 +140,8 @@ export function StatsGrid() {
     // ------------ LOGIC --------------
 
     const isFresh = () => {
-        if (lastUpdate === undefined || Number.isNaN(lastUpdate)) return true;
-        return Date.now() - lastUpdate > DAY;
+        if (lastUpdate === undefined) return false;
+        return Date.now() - lastUpdate < DAY;
     };
 
     const getData = async () => {
@@ -168,15 +174,15 @@ export function StatsGrid() {
         })[];
     }) {
         if (data.suppliers.length === 0 || !isFresh()) {
-            worker.postMessage(dates);
-            worker.onmessage = (event) => {
+            refWorker.current.postMessage({ dates });
+            localStorage.setItem('lastUpdate', Date.now().toString());
+            refWorker.current.onmessage = (event) => {
                 const { suppliers, brands, types, articles } = event.data;
                 setCurrentDate({ suppliers, brands, types, articles });
                 setStarted(true);
-                localStorage.setItem('lastUpdate', Date.now().toString());
             };
 
-            worker.onerror = (error) => {
+            refWorker.current.onerror = (error) => {
                 console.error('Worker error:', error);
             };
         } else {
@@ -234,6 +240,12 @@ export function StatsGrid() {
             })
             .catch((err) => console.error(err));
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (started) refWorker.current.terminate();
+        };
+    }, [started]);
 
     // ------------ RENDER ------------
 

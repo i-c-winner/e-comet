@@ -10,11 +10,12 @@ type TParams = {
     returns: number;
 };
 const db = AdStatsDatabase.getInstance('user');
-self.onmessage = (event: { data: { dates: string[] } }) => {
+self.onmessage = (event: MessageEvent<{ dates: string[] }>) => {
+    console.log('upgrade-data.worker.ts', event);
     STATS_API.getFull()
         .then((data: IStatItem[]) => {
             const items = data;
-            const dates = event.data.dates;
+            const { dates } = event.data;
 
             const normalizedDates = items.map((item) => new Date(item.lastUpdate).setHours(0, 0, 0, 0));
             const normalizedTargetDates = dates.map((date) => new Date(date).setHours(0, 0, 0, 0));
