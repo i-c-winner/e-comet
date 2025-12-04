@@ -10,7 +10,6 @@ import { ServerSideRowModelModule } from 'ag-grid-enterprise';
 import { AdStatsDatabase } from '../../../dbs/stats.db.ts';
 import './stats-grid.scss';
 import { useTranslation } from 'react-i18next';
-import i18n from 'i18next';
 
 const dates = Array.from({ length: 30 }, (_, i) => new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
 const db = AdStatsDatabase.getInstance('user');
@@ -234,15 +233,6 @@ export function StatsGrid() {
 
     return (
         <div className='stats-grid ag-theme-balham'>
-            <div>
-                <button className='btn btn-primary m-1' onClick={() => i18n.changeLanguage('ru')}>
-                    ru
-                </button>
-                <button className='btn btn-primary m-1' onClick={() => i18n.changeLanguage('en')}>
-                    en
-                </button>
-            </div>
-
             {started && (
                 <AgGridReact<IStatItem>
                     modules={[ServerSideRowModelModule]}
@@ -262,7 +252,8 @@ export function StatsGrid() {
                     theme={themeBalham.withParams({
                         backgroundColor: 'var(--bs-body-bg)',
                         foregroundColor: 'var(--bs-body-color)',
-                        browserColorScheme: 'light',
+                        borderColor: 'var(--bs-border-color)',
+                        headerBackgroundColor: 'var(--bs-secondary-bg)',
                     })}
                     onGridReady={(params) => {
                         const fakeServer = createFakeServer();
