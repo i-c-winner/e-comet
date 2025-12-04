@@ -160,6 +160,7 @@ export function StatsGrid() {
         })[];
     }) {
         if (data.suppliers.length === 0 || !isFresh()) {
+            worker.postMessage(dates);
             STATS_API.getFull().then((data) => {
                 worker.postMessage({ data, dates });
             });
