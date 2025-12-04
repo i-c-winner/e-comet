@@ -2,6 +2,13 @@ import { IStatItem } from '../types/stats.types.ts';
 import { AdStatsDatabase } from '../dbs/stats.db.ts';
 import { STATS_API } from '../api/stats.api.ts';
 
+type TParams = {
+    revenue: number;
+    buyouts: number;
+    cost: number;
+    orders: number;
+    returns: number;
+};
 const db = AdStatsDatabase.getInstance('user');
 self.onmessage = (event: { data: { dates: string[] } }) => {
     STATS_API.getFull()
@@ -12,10 +19,9 @@ self.onmessage = (event: { data: { dates: string[] } }) => {
             const normalizedDates = items.map((item) => new Date(item.lastUpdate).setHours(0, 0, 0, 0));
             const normalizedTargetDates = dates.map((date) => new Date(date).setHours(0, 0, 0, 0));
 
-            const brandsMap = new Map<string, { sums: any; average: any }>();
-            const suppliersMap = new Map<string, { sums: any; average: any }>();
-            const typesMap = new Map<string, { sums: any; average: any }>();
-
+            const brandsMap = new Map<string, { sums: TParams; average: TParams }>();
+            const suppliersMap = new Map<string, { sums: TParams; average: TParams }>();
+            const typesMap = new Map<string, { sums: TParams; average: TParams }>();
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 const revenue: number[] = [];
@@ -87,7 +93,7 @@ self.onmessage = (event: { data: { dates: string[] } }) => {
 
                 const brandKey = `${item.brand}|${item.supplier}`;
                 if (!brandsMap.has(brandKey)) {
-                    brandsMap.set(brandKey, { sums, average: avg });
+                    brandsMap.set(brandKey, { sums: sums, average: avg });
                 }
 
                 if (!suppliersMap.has(item.supplier)) {

@@ -47,27 +47,31 @@ export function StatsGrid() {
 
                 return new Promise<{
                     success: boolean;
-                    rows: any[];
+                    rows: IStatItem[];
                 }>((resolve) => {
-                    let rows: any[] = [];
+                    let rows: IStatItem[] = [];
 
                     if (level === 0) {
-                        rows = currentDate.suppliers.map((s: any) => ({
-                            supplier: s.supplier,
-                            __isGroup: true,
-                        }));
+                        rows = currentDate.suppliers.map(
+                            (s: IStatItem): Partial<IStatItem> => ({
+                                supplier: s.supplier,
+                                __isGroup: true,
+                            }),
+                        ) as IStatItem[];
                     }
 
                     if (level === 1) {
                         const supplier = request.groupKeys[0];
 
                         rows = currentDate.brands
-                            .filter((b: any) => b.supplier === supplier)
-                            .map((b: any) => ({
-                                brand: b.brand,
-                                supplier,
-                                __isGroup: true,
-                            }));
+                            .filter((b: IStatItem) => b.supplier === supplier)
+                            .map(
+                                (b: IStatItem): Partial<IStatItem> => ({
+                                    brand: b.brand,
+                                    supplier,
+                                    __isGroup: true,
+                                }),
+                            ) as IStatItem[];
                     }
 
                     if (level === 2) {
@@ -75,20 +79,24 @@ export function StatsGrid() {
                         const brand = request.groupKeys[1];
 
                         rows = currentDate.types
-                            .filter((t: any) => t.supplier === supplier && t.brand === brand)
-                            .map((t: any) => ({
-                                type: t.type,
-                                supplier,
-                                brand,
-                                __isGroup: true,
-                            }));
+                            .filter((t: IStatItem) => t.supplier === supplier && t.brand === brand)
+                            .map(
+                                (t: IStatItem): Partial<IStatItem> => ({
+                                    type: t.type,
+                                    supplier,
+                                    brand,
+                                    __isGroup: true,
+                                }),
+                            ) as IStatItem[];
                     }
 
                     if (level === 3) {
                         const supplier = request.groupKeys[0];
                         const brand = request.groupKeys[1];
                         const type = request.groupKeys[2];
-                        rows = currentDate.articles.filter((a: any) => a.supplier === supplier && a.brand === brand && a.type === type);
+                        rows = currentDate.articles.filter(
+                            (a: IStatItem) => a.supplier === supplier && a.brand === brand && a.type === type,
+                        );
                     }
 
                     const totalRows = rows.length;
@@ -241,7 +249,7 @@ export function StatsGrid() {
                     cacheBlockSize={50}
                     maxBlocksInCache={5}
                     isServerSideGroup={(data) => !!data?.__isGroup}
-                    getServerSideGroupKey={(data: any) => data.supplier ?? data.brand ?? data.type}
+                    getServerSideGroupKey={(data) => data.supplier ?? data.brand ?? data.type}
                     autoGroupColumnDef={{
                         headerName: 'Группа',
                         pinned: 'left',
