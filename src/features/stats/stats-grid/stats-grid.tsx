@@ -169,9 +169,6 @@ export function StatsGrid() {
     }) {
         if (data.suppliers.length === 0 || !isFresh()) {
             worker.postMessage(dates);
-            STATS_API.getFull().then((data) => {
-                worker.postMessage({ data, dates });
-            });
             worker.onmessage = (event) => {
                 const { suppliers, brands, types, articles } = event.data;
                 setCurrentDate({ suppliers, brands, types, articles });
