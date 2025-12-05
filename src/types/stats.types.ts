@@ -17,6 +17,7 @@ interface IStatItemRaw {
     orders: number[]; // заказы за день
     returns: number[]; // возвраты за день
     lastUpdate: string; // дата последнего обновления
+    __isGroup: boolean;
 }
 
 // расширенная модель данных для отображения в гриде

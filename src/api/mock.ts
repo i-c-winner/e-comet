@@ -24,7 +24,6 @@ class ApiWorker {
                 case 'getStatsData':
                     const result = await this.genStatsData(size);
                     self.postMessage({ requestId, result, action });
-                    console.log('getStatsData', requestId);
                     break;
                 default:
                     throw new Error(`Unknown action: ${action}`);
